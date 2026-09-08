@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Walk Tracker</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: center; }
+        h1 { color: #2c3e50; font-size: 1.5em; }
+        .container { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .message-box { min-height: 60px; display: flex; align-items: center; justify-content: center; background-color: #eafaf1; border-left: 5px solid #2ecc71; padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: bold; color: #27ae60; transition: 0.3s; }
+        .message-box.missed { background-color: #fce4e4; border-left-color: #e74c3c; color: #c0392b; }
+        .message-box.neutral { background-color: #e8f4f8; border-left-color: #3498db; color: #2980b9; }
+        .checkbox-group { text-align: left; margin: 20px 0; background: #f9f9f9; padding: 15px; border-radius: 8px; }
+        label { display: block; margin: 15px 0; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; }
+        input[type="checkbox"] { transform: scale(1.5); margin-right: 15px; cursor: pointer; }
+        h3 { color: #34495e; }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
+        .day { padding: 10px 0; background: #ecf0f1; border-radius: 5px; font-size: 0.9em; font-weight: bold; color: #7f8c8d; }
+        .day.partial { background: #f1c40f; color: white; } /* Walked one way */
+        .day.success { background: #2ecc71; color: white; } /* Walked both ways */
+        .day.today { border: 2px solid #2c3e50; color: #2c3e50; } /* Highlights today's date */
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚶 My Walking Routine</h1>
+    
+    <div id="messageBox" class="message-box neutral">
+        Loading...
+    </div>
+
+    <div class="checkbox-group">
+        <h3>Today's Check-in:</h3>
+        <label>
+            <input type="checkbox" id="toWork" onchange="saveAndRender()"> I walked TO work today
+        </label>
+        <label>
+            <input type="checkbox" id="toHome" onchange="saveAndRender()"> I walked back HOME
+        </label>
+    </div>
+
+    <h3 id="monthLabel">Monthly Progress</h3>
+    <div class="calendar" id="calendarGrid">
+        <!-- Calendar days will be generated here -->
+    </div>
+</div>
+
+<script>
+    // Get current date details
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth(); 
+    const today = date.getDate();
+    const todayStr = `${year}-${month + 1}-${today}`; // E.g., "2026-9-7"
+
+    // Load saved data from browser's local storage (or create empty object if none exists)
+    let walkData = JSON.parse(localStorage.getItem('walkTrackerData')) || {};
+
+    function init() {
+        // Set up the month label
+        const monthName = date.toLocaleString('default', { month: 'long' });
+        document.getElementById('monthLabel').innerText = `${monthName} Progress`;
+
+        // Check if there is data for today, and update checkboxes
+        const todayData = walkData[todayStr] || { toWork: false, toHome: false };
+        document.getElementById('toWork').checked = todayData.toWork;
+        document.getElementById('toHome').checked = todayData.toHome;
+
+        // Render the UI
+        updateMessage(todayData.toWork, todayData.toHome, true);
+        renderCalendar();
+    }
+
+    function saveAndRender() {
+        // Get checkbox values
+        const toWork = document.getElementById('toWork').checked;
+        const toHome = document.getElementById('toHome').checked;
+
+        // Save to our data object and then to browser memory
+        walkData[todayStr] = { toWork: toWork, toHome: toHome };
+        localStorage.setItem('walkTrackerData', JSON.stringify(walkData));
+
+        // Update the UI
+        updateMessage(toWork, toHome, false);
+        renderCalendar();
+    }
+
+    function updateMessage(toWork, toHome, isInitialLoad) {
+        const msgBox = document.getElementById('messageBox');
+        msgBox.className = 'message-box'; // Reset classes
+
+        if (toWork && toHome) {
+            msgBox.innerHTML = "Incredible job! 🎉 You crushed your 30-minute goal today. Your body thanks you!";
+        } else if (toWork || toHome) {
+            msgBox.innerHTML = "Great effort! Halfway there is much better than nothing. Keep the momentum going! 💪";
+        } else {
+            if (isInitialLoad) {
+                msgBox.innerHTML = "Ready for a healthy day? Let's get walking!";
+                msgBox.classList.add('neutral');
+            } else {
+                msgBox.innerHTML = "Didn't walk today? That's completely okay. Rest up, and let's get back on track tomorrow! You've got this! 🌟";
+                msgBox.classList.add('missed');
+            }
+        }
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = ''; // Clear existing calendar
+
+        // Find out how many days are in the current month
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dayStr = `${year}-${month + 1}-${i}`;
+            const dayData = walkData[dayStr];
+
+            let dayDiv = document.createElement('div');
+            dayDiv.className = 'day';
+            dayDiv.innerText = i;
+
+            // Highlight today's square
+            if (i === today) {
+                dayDiv.classList.add('today');
+            }
+
+            // Color the squares based on saved data
+            if (dayData) {
+                if (dayData.toWork && dayData.toHome) {
+                    dayDiv.classList.add('success');
+                } else if (dayData.toWork || dayData.toHome) {
+                    dayDiv.classList.add('partial');
+                }
+            }
+
+            grid.appendChild(dayDiv);
+        }
+    }
+
+    // Run initialization when the page loads
+    init();
+</script>
+
+</body>
+</html>
